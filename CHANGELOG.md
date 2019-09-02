@@ -6,19 +6,7 @@ Changelog
 
 [Unreleased]
 ---
-### Added
-- 这里记录新添加的内容
-### Changed
-- 这里记录变更的内容
-
 0.1.0 - 2019-09-02
 ---
 ### Added
 - 创建项目
-
-
-[Unreleased]: http://icode.baidu.com/repos/baidu/ceph/load-balance-python-sdk/merge/0.1.0...master
-
-[Keep a Changelog]: https://keepachangelog.com/zh-CN/1.0.0/
-[Semantic Versioning]: https://semver.org/lang/zh-CN/
-[PEP-440]: https://www.python.org/dev/peps/pep-0440/
