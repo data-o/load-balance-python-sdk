@@ -74,5 +74,3 @@ class BceClientConfiguration(object):
         for k, v in iteritems(other.__dict__):
             if v is not None:
                 self.__dict__[k] = v
-
-

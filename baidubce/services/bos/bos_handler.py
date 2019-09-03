@@ -26,7 +26,11 @@ def parse_copy_object_response(http_response, response):
     response parser for copy object
     """
     TRANSFER_ENCODING = b'transfer-encoding'
-    headers_list = {k: v for k, v in http_response.getheaders()}
+    #headers_list = {k: v for k, v in http_response.getheaders()}
+    headers_list = {}
+    for k, v in http_response.getheaders():
+        headers_list[k] = v
+
     if headers_list.get(TRANSFER_ENCODING, b'not exist') == b'chunked':
         body = http_response.read()
         if body:

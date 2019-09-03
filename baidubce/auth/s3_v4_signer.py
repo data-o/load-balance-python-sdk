@@ -23,6 +23,7 @@ import functools
 import time
 import calendar
 
+from baidubce.exception import BceClientError
 from baidubce.http import http_headers
 from baidubce import utils
 from baidubce import compat
@@ -130,12 +131,11 @@ class SigV4Auth(BaseSigner):
         return header_map
 
     def _canonical_host(self, protocol, host, port):
-        if any(url_parts.scheme == protocol and url_parts.port == port
-               for scheme, port in DEFAULT_PORTS.items()):
+        if port != protocol.default_port:
+            return host + b':' + port
+        else:
             # No need to include the port if it's the default port.
             return host
-        # Strip out auth if it's present in the netloc.
-        return host + port
 
     def canonical_query_string(self, path, params):
         # The query string can come from two parts.  One is the

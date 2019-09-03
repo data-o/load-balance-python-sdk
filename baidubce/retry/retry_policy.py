@@ -79,6 +79,7 @@ class BackOffRetryPolicy(object):
             raise ValueError(b'max_delay_in_millis should be a non-negative integer.')
 
         self.max_error_retry = max_error_retry
+        self.max_error_retry = 0
         self.max_delay_in_millis = max_delay_in_millis
         self.base_interval_in_millis = base_interval_in_millis
 

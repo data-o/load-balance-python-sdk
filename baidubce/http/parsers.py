@@ -16,6 +16,8 @@ import json
 import xml.etree.cElementTree
 import logging
 
+import baidubce.utils
+
 from baidubce import compat
 from baidubce.exception import BceClientError
 from baidubce.exception import BceServerError
@@ -66,8 +68,13 @@ class XmlParser(object):
         root = self._parse_xml_string_to_dom(xml_contents)
         parsed = self._build_name_to_xml_node(root)
         parsed = self._replace_nodes(parsed)
+
         temp_obj = dict_to_python_object_deep(parsed)
-        response.__dict__.update(temp_obj.__dict__)
+        if isinstance(temp_obj, baidubce.utils.Expando):
+            response.__dict__.update(temp_obj.__dict__)
+        else:
+            setattr(response, 'contents', temp_obj)
+
         http_response.close()
         return True
 
@@ -121,7 +128,7 @@ class XmlParser(object):
             # the error response from other sources like the HTTP status code.
             try:
                 return self._parse_error_from_body(http_response, body)
-            except ResponseParserError as e:
+            except Exception as e:
                 LOG.debug(
                     'Exception caught when parsing error response body:',
                     exc_info=True)

@@ -14,23 +14,27 @@
 This module defines endpoints provider for BCE.
 """
 
-import logging
 import random
+import thread
 import threading
 import time
+import logging
+import socket
 
 import baidubce
 import baidubce.protocol
 
 from baidubce import compat
 from baidubce import utils
+from baidubce.auth.s3_v4_signer import S3SigV4Auth
+from baidubce.http.parsers import XmlParser
 from baidubce.http.bce_http_client import send_get_request_without_retry
-from exception import BceClientError
+from baidubce.exception import BceClientError
 
 MAX_RAND_GAP = 10
 MIN_ENDPOINT_LENGTH = 4
 MIN_ACTIVE_ENDPOINT_NUM = 1
-KEEP_ALIVE_SLEEP_SECOND = 60
+KEEP_ALIVE_SLEEP_SECOND = 2
 
 _logger = logging.getLogger(__name__)
 
@@ -46,6 +50,9 @@ class SingleEndpoint(object):
         self.next = None
         self.pre = None
 
+    def set_id(self, my_id):
+        self.id = my_id
+
 
 class EndpointCollection(object):
     """save all endpoints"""
@@ -54,16 +61,20 @@ class EndpointCollection(object):
         self._signer = S3SigV4Auth(credentials, service_name, region)
         self._parser = XmlParser()
         self._valid_min_endpoint_id = 0
+        self._num_of_active_endpoint = 0
+        self._last_epoch = -1
         self._endpoint_head = None
         self._blacklist = {}
-        self._num_of_active_endpoint = 0
         self._mutex = threading.Lock()
         self._keep_alive_thread = None
         self._keep_alive_mutex = threading.Lock()
         self._keep_alive_start = False
         self._keep_alive_stop = False
         self._read_endpoints_from_file(endpoints_path)
-        self.keep_endpoint_alive()
+        self.keep_endpoint_alive_start()
+
+    def __del__(self):
+        self._keep_alive_stop = True
 
     def _read_endpoints_from_file(self, endpoints_path):
         content = []
@@ -72,7 +83,7 @@ class EndpointCollection(object):
                 content = f.readlines()
                 endpoints = [l.strip() for l in content]
         except Exception as e:
-            raise BceClientError("failed read endpoints from %s, error: %s", endpoints_path, e)
+            raise BceClientError("failed read endpoints from %s, error: %s" % (endpoints_path, e))
 
         for endpoint in content:
             if len(endpoint) < MIN_ENDPOINT_LENGTH:
@@ -85,22 +96,22 @@ class EndpointCollection(object):
                 host_and_port = host
 
             endpoint = SingleEndpoint(protocol, host, port, host_and_port)
-            self._insert_endpoint_to_head(endpoint)
+            endpoint.set_id(self._valid_min_endpoint_id)
+
+            self._endpoint_head = self._insert_endpoint_to_head(self._endpoint_head, endpoint)
             self._num_of_active_endpoint += 1
 
-    def _insert_endpoint_to_head(self, endpoint):
-        if self._endpoint_head is None:
-            self._endpoint_head = endpoint
-            self._endpoint_head.next = endpoint
-            self._endpoint_head.pre = endpoint
+    def _insert_endpoint_to_head(self, head, endpoint):
+        if head is None:
+            head = endpoint
+            head.next = endpoint
+            head.pre = endpoint
         else:
-            endpoint.pre = self._endpoint_head.pre
-            endpoint.next = self._endpoint_head
-            self._endpoint_head.pre.next = endpoint
-            self._endpoint_head.pre = endpoint
-
-    def update_endpoint_from_stream(self, body):
-        pass
+            endpoint.pre = head.pre
+            endpoint.next = head
+            head.pre.next = endpoint
+            head.pre = endpoint
+        return endpoint
 
     def add_endpoint_to_blacklist(self, endpoint):
         """
@@ -112,7 +123,7 @@ class EndpointCollection(object):
             elif self._num_of_active_endpoint <= MIN_ACTIVE_ENDPOINT_NUM:
                 return endpoint.next
 
-            _logger.debug(b'add endpoint %s into blacklist', endpoint.host_and_port)
+            _logger.debug('add endpoint %s into blacklist', endpoint.host_and_port)
             self._num_of_active_endpoint -= 1
 
             if self._num_of_active_endpoint == 0:
@@ -128,8 +139,22 @@ class EndpointCollection(object):
             endpoint.is_in_black_list = True
             return self._endpoint_head
 
-    def rm_endpoint_from_blacklist(self, endpoint):
-        pass
+    def _rm_endpoint_from_blacklist(self, host):
+        """
+        remove endpoint from blacklist and insert to active list
+        """
+        with self._mutex:
+            if host not in self._blacklist:
+                return
+            endpoint = self._blacklist[host]
+            if not endpoint.is_in_black_list:
+                return
+            del self._blacklist[host]
+            endpoint.is_in_black_list = False
+
+            if endpoint.id >= self._valid_min_endpoint_id:
+                self._endpoint_head = self._insert_endpoint_to_head(self._endpoint_head, 
+                        endpoint)
 
     def get_next_endpoint(self, endpoint=None):
         """
@@ -164,36 +189,87 @@ class EndpointCollection(object):
     def _is_endpoint_valid(self, endpoint):
         pass
 
-    def _update_endpoint_by_api(self, last_epoch):
+    def _update_endpoint_by_api(self):
         endpoint = self._endpoint_head
+        path = b"/"
+        params = {b'rgw':b''}
         for i in range(0, self._num_of_active_endpoint):
             if endpoint is None:
                 raise BceClientError("keep alive: no active endpoint!")
-
             try:
-                path = b"/"
-                params = {b'acl':b''}
-                response = send_get_request_without_retry(endpoint, self._signer.signer,
-                       [self._parser.parser_error, self._parser.parser_xml], path, params)
+                response = send_get_request_without_retry(endpoint, self._signer,
+                        [self._parser.parser_error, self._parser.parser_xml], path, params)
+                _logger.debug('last epoch %s epoch now %s', self._last_epoch, 
+                    response.metadata.last_epoch)
+
+                if self._last_epoch != response.metadata.last_epoch:
+                    self._last_epoch = response.metadata.last_epoch
+                    return self._update_endpoint(response)
+                else:
+                    return False
             except Exception as e:
-                _logger.debug(b'failed get endpoints from %s, error (%s)', 
+                _logger.debug('failed get endpoints from %s, error (%s)', 
                         endpoint.host_and_port, e)
+            endpoint = endpoint.next
+
+        _logger.debug('failed get endpoints from server')
+        return False
+
+    def _update_endpoint(self, response):
+        if not response.contents:
+            return False
+
+        head = None
+        endpoints_num = 0
+        for rgw in response.contents:
+            endpoint_str = rgw.ip + b':' + rgw.port
+            protocol, host, port = utils.parse_host_port(endpoint_str, baidubce.protocol.HTTP)
+            host_and_port = host
+            if port != protocol.default_port:
+               host_and_port += b':' + compat.convert_to_bytes(port)
+
+            _logger.debug('** insert %s to active list', host_and_port)
+            endpoint = SingleEndpoint(protocol, host, port, host_and_port)
+            head = self._insert_endpoint_to_head(head, endpoint)
+            endpoints_num += 1
+
+        if endpoints_num <= 0:
+            return False
+
+        with self._mutex:
+            for i in range(0, endpoints_num):
+                head.set_id(self._valid_min_endpoint_id + 1)
+                head = head.next
+
+            # update current active endpoints
+            self._endpoint_head = head
+            # _valid_min_endpoint_id must be protected by lock
+            self._valid_min_endpoint_id += 1
+            self._num_of_active_endpoint = endpoints_num
+            # clear balcklist
+            self._blacklist.clear()
+
+        return True
+
+    def _probing_blacklist(self):
+        path = b"/"
+        params = {b'rgw':b''}
+        for host, endpoint in self._blacklist:
+            try:
+                send_get_request_without_retry(endpoint, self._signer, [], path, params)
+                self._rm_endpoint_from_blacklist(host)
+            except socket.error:
                 continue
-
-            last_epoch = self._update_endpoint_with_stream(response)
-            return last_epoch
-        raise BceClientError("failed get endpoints from server")
-
-    def _update_endpoint_with_stream(self, response):
-        print response
-        return 0
+            except Exception:
+                self._rm_endpoint_from_blacklist(host)
 
     def keep_alive(self):
-        last_epoch = 0
         while not self._keep_alive_stop:
-           last_epoch = self._update_endpoint_by_api(last_epoch)
+           ret = self._update_endpoint_by_api()
+           # probing blacklist when we can't fetch endpoints from server
+           if not ret:
+               self._probing_blacklist()
            time.sleep(KEEP_ALIVE_SLEEP_SECOND)
-
 
     def keep_endpoint_alive_start(self):
         with self._keep_alive_mutex:
@@ -202,9 +278,9 @@ class EndpointCollection(object):
             else:
                 self._keep_alive_start = True
         try:
-            self._keep_alive_thread = thread.start_new_thread(self.keep_alve)
+            self._keep_alive_thread = thread.start_new_thread(self.keep_alive, ())
         except Exception as e:
-            raise BceClientError("failed start keep alive thread, %s", e)
+            raise BceClientError("failed start keep alive thread, %s" % e)
 
     def stop_keep_endpoint_alive(self):
         pass
@@ -222,6 +298,6 @@ class GlobalEndpoints(object):
             if endpoints_path in self._g_endpoints:
                 return self._g_endpoints[endpoints_path]
             endpoints_collection = EndpointCollection(credentials, region, service_name, 
-                    endpoints_path, endpoints_path)
+                    endpoints_path)
             self._g_endpoints[endpoints_path] = endpoints_collection
             return endpoints_collection

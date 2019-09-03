@@ -18,7 +18,7 @@ import sys
 from builtins import str
 from builtins import bytes
 from . import compat
-from . import endpoints_provider
+from baidubce.http import endpoints_provider
 
 SDK_VERSION = b'0.8.31'
 DEFAULT_SERVICE_DOMAIN = b'bcebos.com'

@@ -31,6 +31,7 @@ import baidubce
 from baidubce import bce_client_configuration
 from baidubce import utils
 from baidubce.auth.s3_v4_signer import S3SigV4Auth
+from baidubce.auth.bce_credentials import BceCredentials
 from baidubce.bce_base_client import BceBaseClient
 from baidubce.exception import BceClientError
 from baidubce.exception import BceServerError
@@ -59,9 +60,9 @@ class BosClient(BceBaseClient):
     """
     sdk client
     """
-    def __init__(self, config=None):
-        if config is None:
-            config = BceCredentials()
+    def __init__(self, config):
+        #if config is None:
+        #    config = BceCredentials()
         BceBaseClient.__init__(self, config)
         self._parser = XmlParser()
 

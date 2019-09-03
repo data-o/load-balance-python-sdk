@@ -28,6 +28,7 @@ from baidubce.bce_response import BceResponse
 from baidubce.exception import BceHttpClientError
 from baidubce.exception import BceClientError
 from baidubce.http import http_headers
+from baidubce.http import http_methods
 
 _logger = logging.getLogger(__name__)
 MAX_RETRY_TIME_BEFOR_ADD_BLACKLIST = 1
@@ -121,6 +122,7 @@ def send_request(
     :return:
     :rtype: baidubce.BceResponse
     """
+
     _logger.debug(b'%s request start: %s %s, %s, %s',
                   http_method, path, headers, params, body)
     headers = headers or {}
@@ -155,7 +157,6 @@ def send_request(
     retries_attempted = 0
     retries_endpoint_connction = 0
     errors = []
-    print endpoint.host
     while True:
         conn = None
         try:
@@ -173,7 +174,7 @@ def send_request(
 
             http_response = _send_http_request(
                 conn, http_method, uri, headers, body, config.send_buf_size)
-            
+
             headers_list = http_response.getheaders()
 
             # on py3 ,values of headers_list is decoded with ios-8859-1 from
@@ -190,6 +191,7 @@ def send_request(
                     temp_heads.append((k, v))
                 headers_list = temp_heads
 
+
             _logger.debug(
                 'request return: status=%d, headers=%s' % (http_response.status, headers_list))
             response = BceResponse()
@@ -200,6 +202,7 @@ def send_request(
                     break
             return response
         except Exception as e:
+            print "Exception"
             if conn is not None:
                 conn.close()
             # insert ">>>>" before all trace back lines and then save it
@@ -207,7 +210,6 @@ def send_request(
             if config.retry_policy.is_network_error(e, retries_attempted):
                 retries_endpoint_connction += 1
                 if retries_endpoint_connction >= MAX_RETRY_TIME_BEFOR_ADD_BLACKLIST:
-                    print "add %s to bloacklist"%(endpoint.host)
                     endpoint = config.endpoints_provider.add_endpoint_to_blacklist(endpoint)
                     config.personal_data.endpoint = endpoint
                     retries_endpoint_connction = 0
@@ -225,13 +227,14 @@ def send_request(
                 raise BceHttpClientError('Unable to execute HTTP request. Retried %d times. '
                                          'All trace backs:\n%s' % (retries_attempted,
                                                                    '\n'.join(errors)), e)
+            print "retry"
         retries_attempted += 1
 
 def send_get_request_without_retry(
         endpoint,
         signer,
         response_handler_functions,
-        path, headers, params):
+        path, params):
     """
     Send request to BCE services.
 
@@ -248,8 +251,8 @@ def send_get_request_without_retry(
     """
     http_method = http_methods.GET
 
-    _logger.debug(b'%s request start: %s %s, %s',
-                  http_method, path, headers, params)
+    _logger.debug(b'%s request start: %s, %s',
+                  http_method, path, params)
 
     headers = {}
     headers[http_headers.USER_AGENT] = baidubce.USER_AGENT
