@@ -3,8 +3,8 @@
 mkdir -p output/dist
 
 export LC_ALL="en_US.UTF-8"
-VERSION="0.8.30"
-TARGET="bce-python-sdk-$VERSION"
+VERSION="0.0.1"
+TARGET="abcstorage-python-sdk-$VERSION"
 mkdir $TARGET
 cp -rf baidubce sample setup.py README.txt $TARGET
 zip -r ${TARGET}.zip $TARGET -x "*.pyc" "*.pyo"

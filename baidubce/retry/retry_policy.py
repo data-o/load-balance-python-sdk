@@ -19,6 +19,7 @@ import logging
 import socket
 from builtins import str
 from builtins import bytes
+from requests.exceptions import ConnectionError
 
 from baidubce.exception import BceServerError
 
@@ -61,7 +62,7 @@ class BackOffRetryPolicy(object):
     """
 
     def __init__(self,
-                 max_error_retry=3,
+                 max_error_retry=6,
                  max_delay_in_millis=20 * 1000,
                  base_interval_in_millis=300):
         """
@@ -79,7 +80,6 @@ class BackOffRetryPolicy(object):
             raise ValueError(b'max_delay_in_millis should be a non-negative integer.')
 
         self.max_error_retry = max_error_retry
-        self.max_error_retry = 0
         self.max_delay_in_millis = max_delay_in_millis
         self.base_interval_in_millis = base_interval_in_millis
 
@@ -93,6 +93,13 @@ class BackOffRetryPolicy(object):
         if isinstance(error, socket.error):
             _logger.debug(b'Retry for socket error.')
             return True
+
+        if isinstance(error, ConnectionError):
+            return True
+
+        if isinstance(error, http.client.BadStatusLine):
+            return True
+
         return False
 
     def should_retry(self, error, retries_attempted):

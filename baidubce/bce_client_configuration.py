@@ -14,7 +14,6 @@
 This module defines a common configuration class for BCE.
 """
 import os
-import threading
 
 from future.utils import iteritems
 from builtins import str
@@ -25,7 +24,7 @@ from baidubce import gloabal_enpoints
 
 DEFAULT_REGION = "bj"
 DEFAULT_SERVICE_NAME = "s3"
-DEFAULT_CONNECTION_TIMEOUT_IN_MILLIS = 50 * 1000
+DEFAULT_CONNECTION_TIMEOUT_IN_MILLIS = 300 * 1000
 DEFAULT_SEND_BUF_SIZE = 1024 * 1024
 DEFAULT_RECV_BUF_SIZE = 10 * 1024 * 1024
 
@@ -61,10 +60,8 @@ class BceClientConfiguration(object):
         self.endpoints_provider = gloabal_enpoints.find_endpoint_collection(credentials, 
                 region, service_name, endpoints)
 
-        # thread specific data
-        self.personal_data = threading.local()
-        self.personal_data.endpoint = self.endpoints_provider.get_next_endpoint()
-        
+        self.endpoint = None
+
     def merge_non_none_values(self, other):
         """
 

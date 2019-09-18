@@ -29,7 +29,6 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-from Crypto.Cipher import AES
 import baidubce
 from baidubce.http import http_headers
 
@@ -537,43 +536,6 @@ def parse_host_port(endpoint, default_protocol):
         port = parse_result.port
 
     return protocol, host, port
-
-"""
-def aes128_encrypt_16char_key(adminpass, secretkey):
-    
-    #Python2:encrypt admin password by AES128
-    
-    pad_it = lambda s: s + (16 - len(s) % 16) * chr(16 - len(s) % 16)
-    key = secretkey[0:16]
-    mode = AES.MODE_ECB
-    cryptor = AES.new(key, mode, key)
-    cipheradminpass = cryptor.encrypt(pad_it(adminpass)).encode('hex')
-    return cipheradminpass
-"""
-
-
-def aes128_encrypt_16char_key(adminpass, secretkey):
-
-    # Python3: encrypt admin password by AES128
-
-    pad_it = lambda s: s + (16 - len(s) % 16) * chr(16 - len(s) % 16)
-    key = secretkey[0:16]
-    mode = AES.MODE_ECB
-    cryptor = AES.new(key, mode)
-    pad_admin = pad_it(adminpass)
-    byte_pad_admin = pad_admin.encode(encoding='utf-8')
-
-    cryptoradminpass = cryptor.encrypt(byte_pad_admin)
-    #print(cryptoradminpass)
-
-    #cipheradminpass = cryptor.encrypt(byte_pad_admin).encode('hex')
-    byte_cipheradminpass = codecs.encode(cryptoradminpass, 'hex_codec')
-    #print(byte_cipheradminpass)
-
-    cipheradminpass = byte_cipheradminpass.decode(encoding='utf-8')
-    #print(cipheradminpass)
-
-    return cipheradminpass
 
 
 def merge_dicts(dict1, dict2, append_lists=False):

@@ -11,7 +11,7 @@
 # and limitations under the License.
 
 """
-The setup script to install BCE SDK for python
+The setup script to install ABC Storage high performance SDK for python
 """
 from __future__ import absolute_import
 import io
@@ -27,7 +27,7 @@ with io.open(os.path.join("baidubce", "__init__.py"), "rt") as f:
     SDK_VERSION = re.search(r"SDK_VERSION = b'(.*?)'", f.read()).group(1)
 
 setup(
-    name='bce-python-sdk',
+    name='abcstorage-python-sdk',
     version=SDK_VERSION,
     install_requires=['pycrypto>=2.4',
                       'future>=0.6.0',
@@ -42,7 +42,7 @@ setup(
               ],
     url='http://bce.baidu.com',
     license='Apache License 2.0',
-    author='',
+    author='LiuPeng',
     author_email='',
-    description='BCE SDK for python'
+    description='ABC Storage high performance SDK for python'
 )

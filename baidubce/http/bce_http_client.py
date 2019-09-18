@@ -126,8 +126,9 @@ def send_request(
     _logger.debug(b'%s request start: %s %s, %s, %s',
                   http_method, path, headers, params, body)
     headers = headers or {}
-    endpoint = config.endpoints_provider.get_next_endpoint(config.personal_data.endpoint)
-    config.personal_data.endpoint = endpoint
+
+    endpoint = config.endpoints_provider.get_next_endpoint(config.endpoint)
+    config.endpoint = endpoint
 
     headers[http_headers.USER_AGENT] = baidubce.USER_AGENT
     headers[http_headers.HOST] = endpoint.host_and_port
@@ -202,7 +203,6 @@ def send_request(
                     break
             return response
         except Exception as e:
-            print "Exception"
             if conn is not None:
                 conn.close()
             # insert ">>>>" before all trace back lines and then save it
@@ -211,7 +211,7 @@ def send_request(
                 retries_endpoint_connction += 1
                 if retries_endpoint_connction >= MAX_RETRY_TIME_BEFOR_ADD_BLACKLIST:
                     endpoint = config.endpoints_provider.add_endpoint_to_blacklist(endpoint)
-                    config.personal_data.endpoint = endpoint
+                    config.endpoint = endpoint
                     retries_endpoint_connction = 0
                 else:
                     delay_in_millis = config.retry_policy.get_delay_before_next_retry_in_millis(
@@ -227,7 +227,6 @@ def send_request(
                 raise BceHttpClientError('Unable to execute HTTP request. Retried %d times. '
                                          'All trace backs:\n%s' % (retries_attempted,
                                                                    '\n'.join(errors)), e)
-            print "retry"
         retries_attempted += 1
 
 def send_get_request_without_retry(

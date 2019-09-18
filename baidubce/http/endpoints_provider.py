@@ -15,14 +15,15 @@ This module defines endpoints provider for BCE.
 """
 
 import random
-import thread
 import threading
 import time
 import logging
+import os
 import socket
 
 import baidubce
 import baidubce.protocol
+from requests.exceptions import ConnectionError
 
 from baidubce import compat
 from baidubce import utils
@@ -34,7 +35,7 @@ from baidubce.exception import BceClientError
 MAX_RAND_GAP = 10
 MIN_ENDPOINT_LENGTH = 4
 MIN_ACTIVE_ENDPOINT_NUM = 1
-KEEP_ALIVE_SLEEP_SECOND = 2
+KEEP_ALIVE_SLEEP_SECOND = 60
 
 _logger = logging.getLogger(__name__)
 
@@ -65,16 +66,17 @@ class EndpointCollection(object):
         self._last_epoch = -1
         self._endpoint_head = None
         self._blacklist = {}
+        self._my_pid = None
         self._mutex = threading.Lock()
-        self._keep_alive_thread = None
+        #for keep alve
         self._keep_alive_mutex = threading.Lock()
+        self._keep_alive_cond = threading.Condition(self._keep_alive_mutex)
+        self._keep_alive_thread = None
         self._keep_alive_start = False
-        self._keep_alive_stop = False
         self._read_endpoints_from_file(endpoints_path)
-        self.keep_endpoint_alive_start()
 
     def __del__(self):
-        self._keep_alive_stop = True
+        self.stop_keep_endpoint_alive()
 
     def _read_endpoints_from_file(self, endpoints_path):
         content = []
@@ -160,6 +162,11 @@ class EndpointCollection(object):
         """
         get a endpoint from collection
         """
+        # we should start a new process to keep alive, when:
+        #  1. this class may have been copy into a new process
+        if self._my_pid != os.getpid():
+            self.keep_endpoint_alive_start()
+
         if endpoint is None or endpoint.next is None:
             ret = self._get_rand_endpoint()
         elif endpoint.id < self._valid_min_endpoint_id:
@@ -227,7 +234,6 @@ class EndpointCollection(object):
             host_and_port = host
             if port != protocol.default_port:
                host_and_port += b':' + compat.convert_to_bytes(port)
-
             _logger.debug('** insert %s to active list', host_and_port)
             endpoint = SingleEndpoint(protocol, host, port, host_and_port)
             head = self._insert_endpoint_to_head(head, endpoint)
@@ -251,39 +257,57 @@ class EndpointCollection(object):
 
         return True
 
+    def _probing_response_deal(self, http_response, response):
+        body = http_response.read()
+        http_response.close()
+
     def _probing_blacklist(self):
         path = b"/"
         params = {b'rgw':b''}
-        for host, endpoint in self._blacklist:
+        for host, endpoint in self._blacklist.items():
             try:
-                send_get_request_without_retry(endpoint, self._signer, [], path, params)
+                send_get_request_without_retry(endpoint, self._signer, 
+                        [self._probing_response_deal], path, params)
                 self._rm_endpoint_from_blacklist(host)
-            except socket.error:
-                continue
             except Exception:
-                self._rm_endpoint_from_blacklist(host)
+                continue
 
     def keep_alive(self):
-        while not self._keep_alive_stop:
+        while self._keep_alive_start:
            ret = self._update_endpoint_by_api()
            # probing blacklist when we can't fetch endpoints from server
            if not ret:
                self._probing_blacklist()
-           time.sleep(KEEP_ALIVE_SLEEP_SECOND)
+
+           with self._keep_alive_mutex:
+               self._keep_alive_cond.wait(KEEP_ALIVE_SLEEP_SECOND)
 
     def keep_endpoint_alive_start(self):
         with self._keep_alive_mutex:
-            if self._keep_alive_start:
+            if self._keep_alive_start and self._my_pid == os.getpid():
                 return
             else:
+                self._my_pid = os.getpid()
                 self._keep_alive_start = True
-        try:
-            self._keep_alive_thread = thread.start_new_thread(self.keep_alive, ())
-        except Exception as e:
-            raise BceClientError("failed start keep alive thread, %s" % e)
+
+            try:
+                self._keep_alive_thread = threading.Thread(target=self.keep_alive)
+                self._keep_alive_thread.start()
+            except Exception as e:
+                raise BceClientError("failed start keep alive thread, %s" % e)
 
     def stop_keep_endpoint_alive(self):
-        pass
+        if self._keep_alive_thread is None:
+            return 
+
+        with self._keep_alive_mutex:
+            if self._keep_alive_thread is None:
+                return 
+            self._keep_alive_start = False
+            self._keep_alive_cond.notify()
+            self._keep_alive_thread.join()
+            self._keep_alive_thread = None
+            self._my_pid = None
 
 
 class GlobalEndpoints(object):
