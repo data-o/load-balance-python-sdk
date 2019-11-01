@@ -30,7 +30,6 @@ setup(
     name='abcstorage-python-sdk',
     version=SDK_VERSION,
     install_requires=['pycrypto>=2.4',
-                      'future>=0.6.0',
                       'six>=1.4.0'],
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     packages=['baidubce',

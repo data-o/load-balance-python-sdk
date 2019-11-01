@@ -20,7 +20,7 @@ from builtins import bytes
 from . import compat
 from baidubce.http import endpoints_provider
 
-SDK_VERSION = b'0.0.1'
+SDK_VERSION = b'0.0.2'
 DEFAULT_SERVICE_DOMAIN = b'bcebos.com'
 URL_PREFIX = b'/v1'
 DEFAULT_ENCODING = 'UTF-8'

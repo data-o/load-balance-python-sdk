@@ -283,6 +283,7 @@ class EndpointCollection(object):
                self._keep_alive_cond.wait(KEEP_ALIVE_SLEEP_SECOND)
 
     def keep_endpoint_alive_start(self):
+        return
         with self._keep_alive_mutex:
             if self._keep_alive_start and self._my_pid == os.getpid():
                 return
