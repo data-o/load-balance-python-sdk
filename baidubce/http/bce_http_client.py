@@ -57,18 +57,14 @@ def _get_connection(protocol, host, port, connection_timeout_in_millis):
 def _send_http_request(conn, http_method, uri, headers, body, send_buf_size):
     # putrequest() need that http_method and uri is Ascii on Py2 and unicode \
     # on Py3
-    http_method = compat.convert_to_string(http_method)
-    uri = compat.convert_to_string(uri)
     conn.putrequest(http_method, uri, skip_host=True, skip_accept_encoding=True)
 
     for k, v in iteritems(headers):
-        k = utils.convert_to_standard_string(k)
-        v = utils.convert_to_standard_string(v)
         conn.putheader(k, v)
     conn.endheaders()
 
     if body:
-        if isinstance(body, (bytes,str)):
+        if isinstance(body, (bytes, str)):
             conn.send(body)
         else:
             total = int(headers[http_headers.CONTENT_LENGTH])
@@ -82,6 +78,7 @@ def _send_http_request(conn, http_method, uri, headers, body, send_buf_size):
                     raise BceClientError(
                         'Insufficient data, only %d bytes available while %s is %d' % (
                             sent, http_headers.CONTENT_LENGTH, total))
+
                 conn.send(buf)
                 sent += len(buf)
 
@@ -95,41 +92,31 @@ def check_headers(headers):
     :return:
     """
     for k, v in iteritems(headers):
-        if isinstance(v, (bytes,str)) and \
+        if isinstance(v, (bytes, str)) and \
         b'\n' in compat.convert_to_bytes(v):
             raise BceClientError(r'There should not be any "\n" in header[%s]:%s' % (k, v))
 
 
-def send_request(
-        config,
-        signer,
-        response_handler_functions,
+def send_request(config, signer, response_handler_functions,
         http_method, path, body, headers, params):
     """
     Send request to BCE services.
-
     :param config
     :type config: baidubce.BceClientConfiguration
-
     :param signer:
-
     :param response_handler_functions:
     :type response_handler_functions: list
-
     :param request:
     :type request: baidubce.internal.InternalRequest
-
     :return:
     :rtype: baidubce.BceResponse
     """
 
-    _logger.debug(b'%s request start: %s %s, %s, %s',
+    _logger.debug('%s request start: %s %s, %s, %s',
                   http_method, path, headers, params, body)
     headers = headers or {}
-
     endpoint = config.endpoints_provider.get_next_endpoint(config.endpoint)
     config.endpoint = endpoint
-
     headers[http_headers.USER_AGENT] = baidubce.USER_AGENT
     headers[http_headers.HOST] = endpoint.host_and_port
 
@@ -140,7 +127,7 @@ def send_request(
     elif isinstance(body, bytes):
         headers[http_headers.CONTENT_LENGTH] = str(len(body))
     elif http_headers.CONTENT_LENGTH not in headers:
-        raise ValueError(b'No %s is specified.' % http_headers.CONTENT_LENGTH)
+        raise ValueError('No %s is specified.' % http_headers.CONTENT_LENGTH)
 
     # store the offset of fp body
     offset = None
@@ -149,10 +136,9 @@ def send_request(
 
     encoded_params = utils.get_canonical_querystring(params, False)
     if len(encoded_params) > 0:
-        uri = path + b'?' + encoded_params
+        uri = path + '?' + encoded_params
     else:
         uri = path
-
     check_headers(headers)
 
     retries_attempted = 0
@@ -163,24 +149,19 @@ def send_request(
         try:
             signer.sign(endpoint.protocol, endpoint.host, endpoint.port, http_method, path, 
                     headers, params, body)
-
             if retries_attempted > 0 and offset is not None:
                 body.seek(offset)
 
             conn = _get_connection(endpoint.protocol, endpoint.host, endpoint.port, 
                     config.connection_timeout_in_mills)
-
             _logger.debug('request args:method=%s, uri=%s, headers=%s,patams=%s, body=%s',
                     http_method, uri, headers, params, body)
-
             http_response = _send_http_request(
                 conn, http_method, uri, headers, body, config.send_buf_size)
-
             headers_list = http_response.getheaders()
 
             # on py3 ,values of headers_list is decoded with ios-8859-1 from
             # utf-8 binary bytes
-
             # headers_list[*][0] is lowercase on py2
             # headers_list[*][0] is raw value py3
             if compat.PY3 and isinstance(headers_list, list):
@@ -191,7 +172,6 @@ def send_request(
                     k = k.lower()
                     temp_heads.append((k, v))
                 headers_list = temp_heads
-
 
             _logger.debug(
                 'request return: status=%d, headers=%s' % (http_response.status, headers_list))
@@ -250,7 +230,7 @@ def send_get_request_without_retry(
     """
     http_method = http_methods.GET
 
-    _logger.debug(b'%s request start: %s, %s',
+    _logger.debug('%s request start: %s, %s',
                   http_method, path, params)
 
     headers = {}
@@ -260,7 +240,7 @@ def send_get_request_without_retry(
 
     encoded_params = utils.get_canonical_querystring(params, False)
     if len(encoded_params) > 0:
-        uri = path + b'?' + encoded_params
+        uri = path + '?' + encoded_params
     else:
         uri = path
 
@@ -270,14 +250,13 @@ def send_get_request_without_retry(
     signer.sign(endpoint.protocol, endpoint.host, endpoint.port, http_method, path, 
             headers, params, None)
 
-    conn = _get_connection(endpoint.protocol, endpoint.host, endpoint.port, 
-            50*1000)
+    conn = _get_connection(endpoint.protocol, endpoint.host, endpoint.port, 50 * 1000)
 
     _logger.debug('request args:method=%s, uri=%s, headers=%s,patams=%s',
             http_method, uri, headers, params)
 
     http_response = _send_http_request(
-        conn, http_method, uri, headers, None, 1024*1024)
+        conn, http_method, uri, headers, None, 1024 * 1024)
     
     headers_list = http_response.getheaders()
 

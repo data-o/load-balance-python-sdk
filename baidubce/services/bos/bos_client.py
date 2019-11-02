@@ -50,8 +50,8 @@ from baidubce import compat
 
 _logger = logging.getLogger(__name__)
 
-FETCH_MODE_SYNC = b"sync"
-FETCH_MODE_ASYNC = b"async"
+FETCH_MODE_SYNC = "sync"
+FETCH_MODE_ASYNC = "async"
 
 ENCRYPTION_ALGORITHM= "AES256"
 
@@ -151,13 +151,13 @@ class BosClient(BceBaseClient):
         """
         params = {}
         if max_keys is not None:
-            params[b'max-keys'] = max_keys
+            params['max-keys'] = max_keys
         if prefix is not None:
-            params[b'prefix'] = prefix
+            params['prefix'] = prefix
         if marker is not None:
-            params[b'marker'] = marker
+            params['marker'] = marker
         if delimiter is not None:
-            params[b'delimiter'] = delimiter
+            params['delimiter'] = delimiter
 
         response = self._send_request(http_methods.GET, bucket_name, params=params, config=config)
         #when only one object
@@ -195,7 +195,7 @@ class BosClient(BceBaseClient):
             raise TypeError('range should be a list or a tuple')
         if len(range) != 2:
             raise ValueError('range should have length of 2')
-        return {http_headers.RANGE: b'bytes=%d-%d' % tuple(range)}
+        return {http_headers.RANGE: 'bytes=%d-%d' % tuple(range)}
 
 
     @staticmethod
@@ -216,7 +216,7 @@ class BosClient(BceBaseClient):
         headers_list = http_response.getheaders()
         if compat.PY3:
             temp_heads = []
-            for k,v in headers_list:
+            for k, v in headers_list:
                 k = k.lower()
                 temp_heads.append((k, v))
             headers_list = temp_heads
@@ -243,7 +243,7 @@ class BosClient(BceBaseClient):
         :param config:
         :return:
         """
-        key = compat.convert_to_bytes(key)
+#         key = compat.convert_to_bytes(key)
         return self._send_request(
             http_methods.GET,
             bucket_name,
@@ -272,7 +272,7 @@ class BosClient(BceBaseClient):
         :param config:
         :return:
         """
-        key = compat.convert_to_bytes(key)
+#         key = compat.convert_to_bytes(key)
         response = self.get_object(bucket_name, key, range=range, config=config)
         s = response.data.read()
         response.data.close()
@@ -297,8 +297,8 @@ class BosClient(BceBaseClient):
         :return:
             **HTTP Response**
         """
-        key = compat.convert_to_bytes(key)
-        file_name = compat.convert_to_bytes(file_name)
+#         key = compat.convert_to_bytes(key)
+#         file_name = compat.convert_to_bytes(file_name)
         return self._send_request(
             http_methods.GET,
             bucket_name,
@@ -324,7 +324,7 @@ class BosClient(BceBaseClient):
         :return:
             **_GetObjectMetaDataResponse Class**
         """
-        key = compat.convert_to_bytes(key)
+#         key = compat.convert_to_bytes(key)
         return self._send_request(http_methods.HEAD, bucket_name, key, config=config)
 
     @required(bucket_name=(bytes, str),
@@ -359,8 +359,6 @@ class BosClient(BceBaseClient):
         :return:
             **HTTP Response**
         """
-        key = compat.convert_to_bytes(key)
-        content_md5 = compat.convert_to_bytes(content_md5)
         headers = self._prepare_object_headers(
             content_length=content_length,
             content_md5=content_md5,
@@ -410,7 +408,6 @@ class BosClient(BceBaseClient):
         :return:
             **HTTP Response**
         """
-        key = compat.convert_to_bytes(key)
         if isinstance(data, str):
             data = data.encode(baidubce.DEFAULT_ENCODING)
 
@@ -461,7 +458,6 @@ class BosClient(BceBaseClient):
         :return:
             **HttpResponse Class**
         """
-        key = compat.convert_to_bytes(key)
         fp = open(file_name, 'rb')
         try:
             if content_length is None:
@@ -499,7 +495,7 @@ class BosClient(BceBaseClient):
         :return:
             **HttpResponse Class**
         """
-        key = compat.convert_to_bytes(key)
+#         key = compat.convert_to_bytes(key)
         return self._send_request(http_methods.DELETE, bucket_name, key, config=config)
 
     @staticmethod
@@ -517,13 +513,13 @@ class BosClient(BceBaseClient):
         if content_length is not None:
             if content_length and content_length < 0:
                 raise ValueError('content_length should not be negative.')
-            headers[http_headers.CONTENT_LENGTH] = compat.convert_to_bytes(content_length)
+            headers[http_headers.CONTENT_LENGTH] = str(content_length)
 
         if content_md5 is not None:
-            headers[http_headers.CONTENT_MD5] = utils.convert_to_standard_string(content_md5)
+            headers[http_headers.CONTENT_MD5] = content_md5
 
         if content_type is not None:
-            headers[http_headers.CONTENT_TYPE] = utils.convert_to_standard_string(content_type)
+            headers[http_headers.CONTENT_TYPE] = content_type
         else:
             headers[http_headers.CONTENT_TYPE] = http_content_types.OCTET_STREAM
 
@@ -531,15 +527,13 @@ class BosClient(BceBaseClient):
             headers[http_headers.BCE_CONTENT_SHA256] = content_sha256
 
         if etag is not None:
-            headers[http_headers.ETAG] = b'"%s"' % utils.convert_to_standard_string(etag)
+            headers[http_headers.ETAG] = '"%s"' % etag
 
         if user_metadata is not None:
             meta_size = 0
             if not isinstance(user_metadata, dict):
                 raise TypeError('user_metadata should be of type dict.')
             for k, v in iteritems(user_metadata):
-                k = utils.convert_to_standard_string(k)
-                v = utils.convert_to_standard_string(v)
                 normalized_key = http_headers.BCE_USER_METADATA_PREFIX + k
                 headers[normalized_key] = v
                 meta_size += len(normalized_key)
@@ -573,8 +567,6 @@ class BosClient(BceBaseClient):
                                     http_headers.BCE_COPY_SOURCE_IF_MODIFIED_SINCE])
 
         for k, v in iteritems(user_headers):
-            k = utils.convert_to_standard_string(k)
-            v = utils.convert_to_standard_string(v)
             if k in user_headers_set:
                 headers[k] = v
         return headers

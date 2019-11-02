@@ -19,7 +19,7 @@ from builtins import bytes
 
 class Region(object):
     """
-
+    region
     """
     def __init__(self, *region_id_list):
         self.region_id_list = region_id_list

@@ -14,6 +14,6 @@
 This module defines string constants for some content types.
 """
 
-JSON = b'application/json; charset=utf-8'
-XML = b'application/xml'
-OCTET_STREAM = b'application/octet-stream'
+JSON = 'application/json; charset=utf-8'
+XML = 'application/xml'
+OCTET_STREAM = 'application/octet-stream'

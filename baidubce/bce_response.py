@@ -23,7 +23,7 @@ from baidubce.http import http_headers
 
 class BceResponse(object):
     """
-
+    bce response
     """
     def __init__(self):
         self.metadata = utils.Expando()

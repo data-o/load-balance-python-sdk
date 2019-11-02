@@ -25,19 +25,19 @@ def parse_copy_object_response(http_response, response):
     """
     response parser for copy object
     """
-    TRANSFER_ENCODING = b'transfer-encoding'
+    TRANSFER_ENCODING = 'transfer-encoding'
     #headers_list = {k: v for k, v in http_response.getheaders()}
     headers_list = {}
     for k, v in http_response.getheaders():
         headers_list[k] = v
 
-    if headers_list.get(TRANSFER_ENCODING, b'not exist') == b'chunked':
+    if headers_list.get(TRANSFER_ENCODING, 'not exist') == 'chunked':
         body = http_response.read()
         if body:
             d = json.loads(body)
-            if b'code' in d:
+            if 'code' in d:
                 http_response.close()
-                raise BceServerError(d[b'message'], code=d[b'code'], request_id=d[b'requestId'])
+                raise BceServerError(d['message'], code=d['code'], request_id=d['requestId'])
             else:
                 response.__dict__.update(
                     json.loads(body, object_hook=utils.dict_to_python_object).__dict__)

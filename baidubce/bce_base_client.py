@@ -51,13 +51,13 @@ class BceBaseClient(object):
         if self.config.endpoint:
             return self.config.endpoint
         if self.region_supported:
-            return b'%s://%s.%s.%s' % (
+            return '%s://%s.%s.%s' % (
                 self.config.protocol,
                 self.service_id,
                 self.config.region,
                 baidubce.DEFAULT_SERVICE_DOMAIN)
         else:
-            return b'%s://%s.%s' % (
+            return '%s://%s.%s' % (
                 self.config.protocol,
                 self.service_id,
                 baidubce.DEFAULT_SERVICE_DOMAIN)

@@ -32,7 +32,7 @@ class BceClientError(BceError):
 
 class BceServerError(BceError):
     """Error from BCE servers."""
-    REQUEST_EXPIRED = b'RequestExpired'
+    REQUEST_EXPIRED = 'RequestExpired'
 
     """Error threw when connect to server."""
     def __init__(self, message, status_code=None, code=None, request_id=None):

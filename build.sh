@@ -3,7 +3,7 @@
 mkdir -p output/dist
 
 export LC_ALL="en_US.UTF-8"
-VERSION="0.0.2"
+VERSION="0.1.0"
 TARGET="abcstorage-python-sdk-$VERSION"
 mkdir $TARGET
 cp -rf baidubce sample setup.py README.txt $TARGET

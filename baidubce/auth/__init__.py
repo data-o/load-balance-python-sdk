@@ -10,8 +10,12 @@
 # either express or implied. See the License for the specific language governing permissions
 # and limitations under the License.
 
+"""
+auth
+"""
 
 class UNSIGNED(object):
+    """ test """
     def __copy__(self):
         return self
 

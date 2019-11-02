@@ -45,15 +45,10 @@ SIGNED_HEADERS_BLACKLIST = [
 ]
 UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD'
 
-DEFAULT_PORTS = {
-    'http': 80,
-    'https': 443
-}
-
-
 if compat.PY3:
     import http.client
     class HTTPHeaders(http.client.HTTPMessage):
+        """ empty class"""
         pass
 
     from urllib.parse import quote
@@ -61,7 +56,9 @@ if compat.PY3:
     from email.utils import formatdate
 
     def ensure_unicode(s, encoding=None, errors=None):
-        # NOOP in Python 3, because every string is already unicode
+        """
+        NOOP in Python 3, because every string is already unicode
+        """
         return s
 
 else:
@@ -71,6 +68,9 @@ else:
     from email.Utils import formatdate
 
     class HTTPHeaders(Message):
+        """ 
+        HTTPHeaders from python2
+        """
 
         # The __iter__ method is not available in python2.x, so we have
         # to port the py3 version.
@@ -79,12 +79,18 @@ else:
                 yield field
 
     def ensure_unicode(s, encoding='utf-8', errors='strict'):
+        """
+        unicode
+        """
         if isinstance(s, compat.text_type):
             return s
         return unicode(s, encoding, errors)
 
 
 class BaseSigner(object):
+    """
+    the base class of signer
+    """
     REQUIRES_REGION = False
 
     def _add_auth(self, protocol, host, port, http_method, path, headers, params, body):
@@ -132,16 +138,18 @@ class SigV4Auth(BaseSigner):
 
     def _canonical_host(self, protocol, host, port):
         if port != protocol.default_port:
-            return host + b':' + port
+            return host + ':' + str(port)
         else:
             # No need to include the port if it's the default port.
             return host
 
     def canonical_query_string(self, path, params):
-        # The query string can come from two parts.  One is the
-        # params attribute of the request.  The other is from the request
-        # url (in which case we have to re-split the url into its components
-        # and parse out the query string component).
+        """ 
+        The query string can come from two parts.  One is the
+        params attribute of the request.  The other is from the request
+        url (in which case we have to re-split the url into its components
+        and parse out the query string component).
+        """
         if params:
             return self._canonical_query_string_params(params)
         else:
@@ -197,11 +205,17 @@ class SigV4Auth(BaseSigner):
         return ' '.join(value.split())
 
     def signed_headers(self, headers_to_sign):
+        """
+        Get sorted headers.
+        """
         l = ['%s' % n.lower().strip() for n in set(headers_to_sign)]
         l = sorted(l)
         return ';'.join(l)
 
     def payload(self, headers, body):
+        """
+        Get SHA256 of body.
+        """
         if not self._should_sha256_sign_payload(headers):
             # When payload signing is disabled, we use this static string in
             # place of the payload checksum.
@@ -212,7 +226,7 @@ class SigV4Auth(BaseSigner):
             read_chunksize = functools.partial(request_body.read,
                                                PAYLOAD_BUFFER)
             checksum = sha256()
-            for chunk in iter(read_chunksize, b''):
+            for chunk in iter(read_chunksize, ''):
                 checksum.update(chunk)
             hex_checksum = checksum.hexdigest()
             request_body.seek(position)
@@ -229,6 +243,9 @@ class SigV4Auth(BaseSigner):
         return False
 
     def canonical_request(self, protocol, host, port, http_method, path, headers, params, body):
+        """
+        canonical request
+        """
         cr = [http_method, path]
         cr.append(self.canonical_query_string(path, params))
 
@@ -274,6 +291,7 @@ class SigV4Auth(BaseSigner):
         return normalized_path
 
     def scope(self, timestamp):
+        """ scope """
         scope = [self.credentials.access_key_id]
         scope.append(timestamp[0:8])
         scope.append(self._region_name)
@@ -282,6 +300,7 @@ class SigV4Auth(BaseSigner):
         return '/'.join(scope)
 
     def credential_scope(self, timestamp):
+        """ credential scope """
         scope = []
         scope.append(timestamp[0:8])
         scope.append(self._region_name)
@@ -302,6 +321,7 @@ class SigV4Auth(BaseSigner):
         return '\n'.join(sts)
 
     def signature(self, timestamp, string_to_sign):
+        """ start signature """
         key = self.credentials.secret_access_key
         k_date = self._sign(('AWS4' + key).encode('utf-8'), timestamp[0:8])
         k_region = self._sign(k_date, self._region_name)
@@ -311,7 +331,7 @@ class SigV4Auth(BaseSigner):
 
     def _add_auth(self, protocol, host, port, http_method, path, headers, params, body):
         if self.credentials is None:
-            raise BceClientError(b'No credential is specified.' % http_headers.CONTENT_LENGTH)
+            raise BceClientError('No credential is specified.' % http_headers.CONTENT_LENGTH)
 
         datetime_now = datetime.datetime.utcnow()
         timestamp = datetime_now.strftime(SIGV4_TIMESTAMP)
@@ -366,11 +386,14 @@ class SigV4Auth(BaseSigner):
 
 
 class S3SigV4Auth(SigV4Auth):
+    """ 
+    sign request with s3v4.
+    """
     def __init__(self, credentials, service_name, region_name):
         super(S3SigV4Auth, self).__init__(
             credentials, service_name, region_name)
 
-        if credentials == None:
+        if credentials is None:
             self._need_sign = False
             return
 

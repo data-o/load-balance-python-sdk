@@ -10,6 +10,10 @@
 # either express or implied. See the License for the specific language governing permissions
 # and limitations under the License.
 
+""" 
+parser result and error.
+"""
+
 import re
 import base64
 import json
@@ -31,10 +35,13 @@ else:
 LOG = logging.getLogger(__name__)
 
 class XmlParser(object):
+    """ parse xml """
+
     def __init__(self):
         self._namespace_re = re.compile('{.*}')
  
     def parser_error(self, http_response, response):
+        """ parser error """
         if http_response.status < 301:
             return False
 
@@ -56,6 +63,7 @@ class XmlParser(object):
         return True 
 
     def parser_xml(self, http_response, response):
+        """ parser xml """
         if http_response.status >= 301:
             return False
 
@@ -94,7 +102,7 @@ class XmlParser(object):
             if body is None or len(body) == 0:
                 return True
     
-            return body.startswith(b'<html>') or not body
+            return body.startswith('<html>') or not body
     
     def _do_generic_error_parse(self, http_response):
         # There's not really much we can do when we get a generic

@@ -69,7 +69,8 @@ def get_md5_from_fp(fp, offset=0, length=-1, buf_size=8192):
         if length == 0:
             break
     fp.seek(origin_offset)
-    return base64.standard_b64encode(md5.digest())
+    #return base64.standard_b64encode(md5.digest())
+    return compat.convert_to_string(base64.standard_b64encode(md5.digest()))
 
 
 def get_canonical_time(timestamp=0):
@@ -86,7 +87,7 @@ def get_canonical_time(timestamp=0):
         utctime = datetime.datetime.utcnow()
     else:
         utctime = datetime.datetime.utcfromtimestamp(timestamp)
-    return b"%04d-%02d-%02dT%02d:%02d:%02dZ" % (
+    return "%04d-%02d-%02dT%02d:%02d:%02dZ" % (
         utctime.year, utctime.month, utctime.day,
         utctime.hour, utctime.minute, utctime.second)
 
@@ -102,11 +103,11 @@ def is_ip(s):
         **Boolean**
     """
     try:
-        tmp_list = s.split(b':')
+        tmp_list = s.split(':')
         s = tmp_list[0]
-        if s == b'localhost':
+        if s == 'localhost':
             return True
-        tmp_list = s.split(b'.')
+        tmp_list = s.split('.')
         if len(tmp_list) != 4:
             return False
         else:
@@ -256,13 +257,13 @@ def append_uri(base_uri, *path_components):
     tmp = [base_uri]
     for path in path_components:
         if path:
-            tmp.append(normalize_string(path, False))
+            tmp.append(path)
     if len(tmp) > 1:
-        tmp[0] = tmp[0].rstrip(b'/')
-        tmp[-1] = tmp[-1].lstrip(b'/')
+        tmp[0] = tmp[0].rstrip('/')
+        tmp[-1] = tmp[-1].lstrip('/')
         for i in range(1, len(tmp) - 1):
-            tmp[i] = tmp[i].strip(b'/')
-    return (b'/').join(tmp)
+            tmp[i] = tmp[i].strip('/')
+    return ('/').join(tmp)
 
 
 def check_bucket_valid(bucket):
@@ -299,33 +300,32 @@ def guess_content_type_by_file_name(file_name):
         **Type Value**
     """
     mime_map = dict()
-    mime_map[b"js"] = b"application/javascript"
-    mime_map[b"xlsx"] = b"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    mime_map[b"xltx"] = b"application/vnd.openxmlformats-officedocument.spreadsheetml.template"
-    mime_map[b"potx"] = b"application/vnd.openxmlformats-officedocument.presentationml.template"
-    mime_map[b"ppsx"] = b"application/vnd.openxmlformats-officedocument.presentationml.slideshow"
-    mime_map[b"pptx"] = b"application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    mime_map[b"sldx"] = b"application/vnd.openxmlformats-officedocument.presentationml.slide"
-    mime_map[b"docx"] = b"application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    mime_map[b"dotx"] = b"application/vnd.openxmlformats-officedocument.wordprocessingml.template"
-    mime_map[b"xlam"] = b"application/vnd.ms-excel.addin.macroEnabled.12"
-    mime_map[b"xlsb"] = b"application/vnd.ms-excel.sheet.binary.macroEnabled.12"
+    mime_map["js"] = "application/javascript"
+    mime_map["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    mime_map["xltx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.template"
+    mime_map["potx"] = "application/vnd.openxmlformats-officedocument.presentationml.template"
+    mime_map["ppsx"] = "application/vnd.openxmlformats-officedocument.presentationml.slideshow"
+    mime_map["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    mime_map["sldx"] = "application/vnd.openxmlformats-officedocument.presentationml.slide"
+    mime_map["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    mime_map["dotx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.template"
+    mime_map["xlam"] = "application/vnd.ms-excel.addin.macroEnabled.12"
+    mime_map["xlsb"] = "application/vnd.ms-excel.sheet.binary.macroEnabled.12"
     try:
         name = os.path.basename(file_name.lower())
-        suffix = name.split(b'.')[-1]
+        suffix = name.split('.')[-1]
         if suffix in iterkeys(mime_map):
             mime_type = mime_map[suffix]
         else:
             import mimetypes
 
             mimetypes.init()
-            suffix = compat.convert_to_string(b"." + suffix)
+            suffix = "." + suffix
             mime_type = mimetypes.types_map[suffix]
-            mime_type = compat.convert_to_bytes(mime_type)
     except:
-        mime_type = b'application/octet-stream'
+        mime_type = 'application/octet-stream'
     if not mime_type:
-        mime_type = b'application/octet-stream'
+        mime_type = 'application/octet-stream'
     return mime_type
 
 
@@ -366,9 +366,10 @@ def get_canonical_querystring(params, for_signature):
         if not for_signature or k.lower != http_headers.AUTHORIZATION.lower():
             if v is None:
                 v = ''
-            result.append(b'%s=%s' % (normalize_string(k), normalize_string(v)))
+            #result.append('%s=%s' % (normalize_string(k), normalize_string(v)))
+            result.append('%s=%s' % (k, v))
     result.sort()
-    return (b'&').join(result)
+    return ('&').join(result)
 
 
 def print_object(obj):
@@ -511,22 +512,21 @@ def parse_host_port(endpoint, default_protocol):
     :return: tuple of protocol, host, port
     """
     # netloc should begin with // according to RFC1808
-    if b"//" not in endpoint:
-        endpoint = b"//" + endpoint
+    if "//" not in endpoint:
+        endpoint = "//" + endpoint
 
     try:
         # scheme in endpoint dominates input default_protocol
         parse_result = urlparse(
-                endpoint,
-                compat.convert_to_bytes(default_protocol.name))
+                endpoint, default_protocol.name)
     except Exception as e:
         raise ValueError('Invalid endpoint:%s, error:%s' % (endpoint,
             compat.convert_to_string(e)))
 
-    if parse_result.scheme == compat.convert_to_bytes(baidubce.protocol.HTTP.name):
+    if parse_result.scheme == baidubce.protocol.HTTP.name:
         protocol = baidubce.protocol.HTTP
         port = baidubce.protocol.HTTP.default_port
-    elif parse_result.scheme == compat.convert_to_bytes(baidubce.protocol.HTTPS.name):
+    elif parse_result.scheme == baidubce.protocol.HTTPS.name:
         protocol = baidubce.protocol.HTTPS
         port = baidubce.protocol.HTTPS.default_port
     else:

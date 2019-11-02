@@ -22,9 +22,9 @@ class BceCredentials(object):
     Provides access to the BCE credentials used for accessing BCE services:
     BCE access key ID and secret access key.
     """
-    def __init__(self, access_key_id, secret_access_key, token = None):
-        self.access_key_id = compat.convert_to_bytes(access_key_id)
-        self.secret_access_key = compat.convert_to_bytes(secret_access_key)
+    def __init__(self, access_key_id, secret_access_key, token=None):
+        self.access_key_id = access_key_id
+        self.secret_access_key = secret_access_key
         if token:
             self.token = token
         else:

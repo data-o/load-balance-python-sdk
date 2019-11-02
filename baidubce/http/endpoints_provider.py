@@ -52,6 +52,7 @@ class SingleEndpoint(object):
         self.pre = None
 
     def set_id(self, my_id):
+        """ set id """
         self.id = my_id
 
 
@@ -90,10 +91,9 @@ class EndpointCollection(object):
         for endpoint in content:
             if len(endpoint) < MIN_ENDPOINT_LENGTH:
                 continue
-            endpoint = compat.convert_to_bytes(endpoint)
             protocol, host, port = utils.parse_host_port(endpoint, baidubce.protocol.HTTP)
             if port != protocol.default_port:
-                host_and_port = host +  b':' + compat.convert_to_bytes(port)
+                host_and_port = host + ':' + str(port)
             else:
                 host_and_port = host
 
@@ -198,8 +198,8 @@ class EndpointCollection(object):
 
     def _update_endpoint_by_api(self):
         endpoint = self._endpoint_head
-        path = b"/"
-        params = {b'rgw':b''}
+        path = '/'
+        params = {'rgw':''}
         for i in range(0, self._num_of_active_endpoint):
             if endpoint is None:
                 raise BceClientError("keep alive: no active endpoint!")
@@ -229,11 +229,11 @@ class EndpointCollection(object):
         head = None
         endpoints_num = 0
         for rgw in response.contents:
-            endpoint_str = rgw.ip + b':' + rgw.port
+            endpoint_str = rgw.ip + ':' + rgw.port
             protocol, host, port = utils.parse_host_port(endpoint_str, baidubce.protocol.HTTP)
             host_and_port = host
             if port != protocol.default_port:
-               host_and_port += b':' + compat.convert_to_bytes(port)
+               host_and_port += ':' + str(port)
             _logger.debug('** insert %s to active list', host_and_port)
             endpoint = SingleEndpoint(protocol, host, port, host_and_port)
             head = self._insert_endpoint_to_head(head, endpoint)
@@ -262,8 +262,8 @@ class EndpointCollection(object):
         http_response.close()
 
     def _probing_blacklist(self):
-        path = b"/"
-        params = {b'rgw':b''}
+        path = "/"
+        params = {'rgw':''}
         for host, endpoint in self._blacklist.items():
             try:
                 send_get_request_without_retry(endpoint, self._signer, 
@@ -273,6 +273,7 @@ class EndpointCollection(object):
                 continue
 
     def keep_alive(self):
+        """ keep alive """
         while self._keep_alive_start:
            ret = self._update_endpoint_by_api()
            # probing blacklist when we can't fetch endpoints from server
@@ -283,6 +284,7 @@ class EndpointCollection(object):
                self._keep_alive_cond.wait(KEEP_ALIVE_SLEEP_SECOND)
 
     def keep_endpoint_alive_start(self):
+        """ start to keep alive """
         return
         with self._keep_alive_mutex:
             if self._keep_alive_start and self._my_pid == os.getpid():
@@ -298,6 +300,7 @@ class EndpointCollection(object):
                 raise BceClientError("failed start keep alive thread, %s" % e)
 
     def stop_keep_endpoint_alive(self):
+        """ stop keep alive """
         if self._keep_alive_thread is None:
             return 
 
@@ -319,6 +322,7 @@ class GlobalEndpoints(object):
         self._mutex = threading.Lock()
 
     def find_endpoint_collection(self, credentials, region, service_name, endpoints_path):
+        """ the endpoint collection """
         with self._mutex:
             if endpoints_path in self._g_endpoints:
                 return self._g_endpoints[endpoints_path]

@@ -16,46 +16,46 @@ This module defines string constants for HTTP headers
 
 # Standard HTTP Headers
 
-AUTHORIZATION = b"Authorization"
+AUTHORIZATION = "Authorization"
 
-CACHE_CONTROL = b"Cache-Control"
+CACHE_CONTROL = "Cache-Control"
 
-CONTENT_DISPOSITION = b"Content-Disposition"
+CONTENT_DISPOSITION = "Content-Disposition"
 
-CONTENT_ENCODING = b"Content-Encoding"
+CONTENT_ENCODING = "Content-Encoding"
 
-CONTENT_LENGTH = b"Content-Length"
+CONTENT_LENGTH = "Content-Length"
 
-CONTENT_MD5 = b"Content-MD5"
+CONTENT_MD5 = "Content-MD5"
 
-CONTENT_RANGE = b"Content-Range"
+CONTENT_RANGE = "Content-Range"
 
-CONTENT_TYPE = b"Content-Type"
+CONTENT_TYPE = "Content-Type"
 
-DATE = b"Date"
+DATE = "Date"
 
-ETAG = b"ETag"
+ETAG = "ETag"
 
-EXPIRES = b"Expires"
+EXPIRES = "Expires"
 
-HOST = b"Host"
+HOST = "Host"
 
-LAST_MODIFIED = b"Last-Modified"
+LAST_MODIFIED = "Last-Modified"
 
-RANGE = b"Range"
+RANGE = "Range"
 
-SERVER = b"Server"
+SERVER = "Server"
 
-USER_AGENT = b"User-Agent"
+USER_AGENT = "User-Agent"
 
 # BCE Common HTTP Headers
 
-BCE_PREFIX = b"x-bce-"
+BCE_PREFIX = "x-bce-"
 
-BCE_CONTENT_SHA256 = b"x-amz-content-sha256"
+BCE_CONTENT_SHA256 = "x-amz-content-sha256"
 
-BCE_DATE = b"x-amz-date"
+BCE_DATE = "x-amz-date"
 
-BCE_REQUEST_ID = b"x-amz-request-id"
+BCE_REQUEST_ID = "x-amz-request-id"
 
-BCE_USER_METADATA_PREFIX = b"x-amz-meta-"
+BCE_USER_METADATA_PREFIX = "x-amz-meta-"

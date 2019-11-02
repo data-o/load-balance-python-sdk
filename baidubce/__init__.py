@@ -20,14 +20,12 @@ from builtins import bytes
 from . import compat
 from baidubce.http import endpoints_provider
 
-SDK_VERSION = b'0.0.2'
-DEFAULT_SERVICE_DOMAIN = b'bcebos.com'
-URL_PREFIX = b'/v1'
+SDK_VERSION = '0.1.0'
+DEFAULT_SERVICE_DOMAIN = 'bcebos.com'
+URL_PREFIX = '/v1'
 DEFAULT_ENCODING = 'UTF-8'
 
-USER_AGENT = 'abcstorage-sdk-python/%s/%s/%s' % (
-    compat.convert_to_string(SDK_VERSION), sys.version, sys.platform)
+USER_AGENT = 'abcstorage-sdk-python/%s/%s/%s' % (SDK_VERSION, sys.version, sys.platform)
 USER_AGENT = USER_AGENT.replace('\n', '')
-USER_AGENT = compat.convert_to_bytes(USER_AGENT)
 
 gloabal_enpoints = endpoints_provider.GlobalEndpoints()
