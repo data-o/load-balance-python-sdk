@@ -40,7 +40,6 @@ class BceBaseClient(object):
         self.region_supported = region_supported
         self.service_name = config.service_name
         self.config = config
-
         self.signer = S3SigV4Auth(self.config.credentials, self.config.service_name, 
                 self.config.region)
 

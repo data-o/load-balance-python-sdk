@@ -6,6 +6,8 @@ import threading, multiprocessing
 import logging
 import os
 import sys
+
+from io import BytesIO
  
 from baidubce.bce_client_configuration import BceClientConfiguration
 from baidubce.auth.bce_credentials import BceCredentials
@@ -14,7 +16,7 @@ from baidubce.services.bos.bos_client import BosClient
 def test_basic_api(bos_client):
     bucket_name = 'pxython-sdk3'
     object_key = 'test.go'
-    file_name = 'test_sample.py'
+    file_name = 'test_sample3.py'
 
     #create bucket
     print("create bucket")
@@ -59,6 +61,8 @@ def download_data(items, cpu_id, start, end, bos_client, bucket_name):
     t0 = time.time()
     for i in range(start, end):
         ret = bos_client.get_object(bucket_name, items[i])
+        data = BytesIO(ret.data.read())
+        ret.data.close()
     print("process %d \t finish \t %d ~%d, \t use time: %f"%(cpu_id, start, end, time.time() - t0))
  
 def read_data(bos_client, bucket_name, filelist, cpu_num):

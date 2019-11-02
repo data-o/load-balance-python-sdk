@@ -36,7 +36,7 @@ from baidubce.bce_base_client import BceBaseClient
 from baidubce.exception import BceClientError
 from baidubce.exception import BceServerError
 from baidubce.exception import BceHttpClientError
-from baidubce.http import bce_http_client
+from baidubce.http.bce_http_client import BceHttpClient
 from baidubce.http import handler
 from baidubce.http import http_content_types
 from baidubce.http import http_headers
@@ -65,6 +65,7 @@ class BosClient(BceBaseClient):
         #    config = BceCredentials()
         BceBaseClient.__init__(self, config)
         self._parser = XmlParser()
+        self._http_client = BceHttpClient(self.signer)
 
     def list_buckets(self, config=None):
         """
@@ -272,7 +273,6 @@ class BosClient(BceBaseClient):
         :param config:
         :return:
         """
-#         key = compat.convert_to_bytes(key)
         response = self.get_object(bucket_name, key, range=range, config=config)
         s = response.data.read()
         response.data.close()
@@ -297,8 +297,6 @@ class BosClient(BceBaseClient):
         :return:
             **HTTP Response**
         """
-#         key = compat.convert_to_bytes(key)
-#         file_name = compat.convert_to_bytes(file_name)
         return self._send_request(
             http_methods.GET,
             bucket_name,
@@ -324,7 +322,6 @@ class BosClient(BceBaseClient):
         :return:
             **_GetObjectMetaDataResponse Class**
         """
-#         key = compat.convert_to_bytes(key)
         return self._send_request(http_methods.HEAD, bucket_name, key, config=config)
 
     @required(bucket_name=(bytes, str),
@@ -605,6 +602,5 @@ class BosClient(BceBaseClient):
         if config.security_token is not None:
             raise TypeError('not implemented sts.')
 
-        return bce_http_client.send_request(
-            config, self.signer, [self._parser.parser_error, body_parser],
+        return self._http_client.send_request(config, [self._parser.parser_error, body_parser],
             http_method, path, body, headers, params)

@@ -65,7 +65,6 @@ def parse_error(http_response, response):
         raise BceClientError('Can not handle 1xx http status code')
     bse = None
     body = http_response.read()
-    print(body)
     if body:
         d = json.loads(compat.convert_to_string(body))
         bse = BceServerError(d['message'], code=d['code'], request_id=d['requestId'])

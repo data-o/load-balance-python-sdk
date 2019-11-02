@@ -60,8 +60,6 @@ class BceClientConfiguration(object):
         self.endpoints_provider = gloabal_enpoints.find_endpoint_collection(credentials, 
                 region, service_name, endpoints)
 
-        self.endpoint = None
-
     def merge_non_none_values(self, other):
         """
 
