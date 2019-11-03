@@ -104,12 +104,21 @@ class EndpointCollection(object):
             head = endpoint
             head.next = endpoint
             head.pre = endpoint
-        else:
+        elif endpoint.host_and_port < head.host_and_port:
             endpoint.pre = head.pre
             endpoint.next = head
             head.pre.next = endpoint
             head.pre = endpoint
-        return endpoint
+            head = endpoint
+        else:
+            temp = head.next
+            while endpoint.host_and_port > temp.host_and_port and temp != head:
+                temp = temp.next
+            endpoint.pre = temp.pre
+            endpoint.next = temp
+            temp.pre.next = endpoint
+            temp.pre = endpoint
+        return head
 
     def add_endpoint_to_blacklist(self, endpoint):
         """
@@ -129,7 +138,8 @@ class EndpointCollection(object):
             else:
                 endpoint.next.pre = endpoint.pre
                 endpoint.pre.next = endpoint.next
-                self._endpoint_head = endpoint.next
+                if endpoint == self._endpoint_head:
+                    self._endpoint_head = endpoint.next
             endpoint.next = None
             endpoint.pre = None
 
@@ -143,16 +153,20 @@ class EndpointCollection(object):
         """
         with self._mutex:
             if host not in self._blacklist:
-                return
+                return False
             endpoint = self._blacklist[host]
             if not endpoint.is_in_black_list:
-                return
+                return False
+            endpoint = self._blacklist[host]
             del self._blacklist[host]
             endpoint.is_in_black_list = False
 
             if endpoint.id >= self._valid_min_endpoint_id:
                 self._endpoint_head = self._insert_endpoint_to_head(self._endpoint_head, 
                         endpoint)
+                self._num_of_active_endpoint += 1
+                return True
+        return False
 
     def get_endpoint_by_pid(self):
         """
@@ -168,7 +182,7 @@ class EndpointCollection(object):
         if key in self._pid_to_endpoint:
             endpoint = self._pid_to_endpoint[key]
 
-        if endpoint is None or endpoint.id < self._valid_min_endpoint_id:
+        if endpoint is None or endpoint.id < self._valid_min_endpoint_id or endpoint.is_in_black_list:
             endpoint = self._get_rand_endpoint(my_pid % self._num_of_active_endpoint)
             self._pid_to_endpoint[key] = endpoint
 
@@ -211,7 +225,7 @@ class EndpointCollection(object):
         pass
 
     def _update_endpoint_by_api(self):
-        endpoint = self._endpoint_head
+        endpoint = self.get_endpoint_by_pid()
         path = '/'
         params = {'rgw':''}
         for i in range(0, self._num_of_active_endpoint):
@@ -278,13 +292,21 @@ class EndpointCollection(object):
     def _probing_blacklist(self):
         path = "/"
         params = {'rgw':''}
-        for host, endpoint in self._blacklist.items():
+        need_update = False
+        keys = list(self._blacklist.keys())
+        for host in keys:
             try:
+                endpoint = self._blacklist[host]
                 self._http_client.send_get_request_without_retry(endpoint,
                         [self._probing_response_deal], path, params)
-                self._rm_endpoint_from_blacklist(host)
-            except Exception:
+                ret = self._rm_endpoint_from_blacklist(host)
+                need_update = (need_update or ret)
+            except Exception as e:
                 continue
+
+        # remove all connections
+        if need_update:
+            self._pid_to_endpoint.clear()
 
     def keep_alive(self):
         """ keep alive """

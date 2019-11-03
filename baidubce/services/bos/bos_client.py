@@ -166,11 +166,9 @@ class BosClient(BceBaseClient):
             response.contents = [response.contents]
         return response
 
-
     @required(bucket_name=(bytes, str))
     def list_all_objects(self, bucket_name, prefix=None, delimiter=None, config=None):
         """
-
         :param bucket_name:
         :param prefix:
         :param delimiter:

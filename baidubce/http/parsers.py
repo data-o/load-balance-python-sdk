@@ -114,8 +114,7 @@ class XmlParser(object):
                       'Message': http_response.reason},
             'ResponseMetadata': {},
         }
-    
-    
+
     def _do_error_parse(self, http_response, body):
         # We're trying to be service agnostic here, but S3 does have a slightly
         # different response structure for its errors compared to other

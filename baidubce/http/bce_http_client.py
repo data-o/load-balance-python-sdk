@@ -218,7 +218,6 @@ class BceHttpClient(object):
                     retries_endpoint_connction += 1
                     if retries_endpoint_connction >= MAX_RETRY_TIME_BEFOR_ADD_BLACKLIST:
                         endpoint = config.endpoints_provider.add_endpoint_to_blacklist(endpoint)
-                        config.endpoint = endpoint
                         retries_endpoint_connction = 0
                     else:
                         delay_in_millis = config.retry_policy.get_delay_before_next_retry_in_millis(
@@ -275,31 +274,37 @@ class BceHttpClient(object):
         self.signer.sign(endpoint.protocol, endpoint.host, endpoint.port, http_method, path, 
                 headers, params, None)
 
-        conn = self._get_connection(endpoint.protocol, endpoint.host, endpoint.port, 50 * 1000)
+        conn = None
+        try:
+            conn = self._get_connection(endpoint.protocol, endpoint.host, endpoint.port, 50 * 1000)
 
-        _logger.debug('request args:method=%s, uri=%s, headers=%s,patams=%s',
-                http_method, uri, headers, params)
+            _logger.debug('request args:method=%s, uri=%s, headers=%s,patams=%s',
+                    http_method, uri, headers, params)
 
-        http_response = self._send_http_request(
-            conn, http_method, uri, headers, None, 1024 * 1024)
+            http_response = self._send_http_request(
+                conn, http_method, uri, headers, None, 1024 * 1024)
 
-        headers_list = http_response.getheaders()
+            headers_list = http_response.getheaders()
 
-        if compat.PY3 and isinstance(headers_list, list):
-            temp_heads = []
-            for k, v in headers_list:
-                k = k.encode('latin-1').decode('utf-8')
-                v = v.encode('latin-1').decode('utf-8')
-                k = k.lower()
-                temp_heads.append((k, v))
-            headers_list = temp_heads
+            if compat.PY3 and isinstance(headers_list, list):
+                temp_heads = []
+                for k, v in headers_list:
+                    k = k.encode('latin-1').decode('utf-8')
+                    v = v.encode('latin-1').decode('utf-8')
+                    k = k.lower()
+                    temp_heads.append((k, v))
+                headers_list = temp_heads
 
-        _logger.debug(
-            'request return: status=%d, headers=%s' % (http_response.status, headers_list))
-        response = BceResponse()
-        response.set_metadata_from_headers(dict(headers_list))
+            _logger.debug(
+                'request return: status=%d, headers=%s' % (http_response.status, headers_list))
 
-        for handler_function in response_handler_functions:
-            if handler_function(http_response, response):
-                break
-        return response
+            response = BceResponse()
+            response.set_metadata_from_headers(dict(headers_list))
+            for handler_function in response_handler_functions:
+                if handler_function(http_response, response):
+                    break
+            return response
+        except Exception as e:
+            if conn is not None:
+                self._del_connection(conn, endpoint.protocol, endpoint.host, endpoint.port)
+            raise e
