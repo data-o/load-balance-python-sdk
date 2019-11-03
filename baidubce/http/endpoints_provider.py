@@ -64,7 +64,7 @@ class EndpointCollection(object):
         self._parser = XmlParser()
         self._valid_min_endpoint_id = 0
         self._num_of_active_endpoint = 0
-        self._last_epoch = -1
+        self._last_epoch = None
         self._endpoint_head = None
         self._blacklist = {}
         self._mutex = threading.Lock()
@@ -297,8 +297,9 @@ class EndpointCollection(object):
         for host in keys:
             try:
                 endpoint = self._blacklist[host]
+                # need use new connection
                 self._http_client.send_get_request_without_retry(endpoint,
-                        [self._probing_response_deal], path, params)
+                        [self._probing_response_deal], path, params, True)
                 ret = self._rm_endpoint_from_blacklist(host)
                 need_update = (need_update or ret)
             except Exception as e:

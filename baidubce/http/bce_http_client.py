@@ -48,6 +48,28 @@ class BceHttpClient(object):
         self._pid = os.getpid()
         self._thread_id = threading.current_thread().ident
 
+    def _get_new_connection(self, protocol, host, port, connection_timeout_in_millis):
+        """
+        :param protocol
+        :type protocol: baidubce.protocol.Protocol
+        :param endpoint
+        :type endpoint: str
+        :param connection_timeout_in_millis
+        :type connection_timeout_in_millis int
+        """
+        conn = None
+        if protocol.name == baidubce.protocol.HTTP.name:
+            conn = http.client.HTTPConnection(
+                host=host, port=port, timeout=connection_timeout_in_millis / 1000)
+        elif protocol.name == baidubce.protocol.HTTPS.name:
+            conn = http.client.HTTPSConnection(
+                host=host, port=port, timeout=connection_timeout_in_millis / 1000)
+        else:
+            raise ValueError(
+                'Invalid protocol: %s, either HTTP or HTTPS is expected.' % protocol)
+        return conn
+
+
     def _get_connection(self, protocol, host, port, connection_timeout_in_millis):
         """
         :param protocol
@@ -66,18 +88,8 @@ class BceHttpClient(object):
         if key in self.local_conns.conns:
             return self.local_conns.conns[key]
 
-        conn = None
-        if protocol.name == baidubce.protocol.HTTP.name:
-            conn = http.client.HTTPConnection(
-                host=host, port=port, timeout=connection_timeout_in_millis / 1000)
-        elif protocol.name == baidubce.protocol.HTTPS.name:
-            conn = http.client.HTTPSConnection(
-                host=host, port=port, timeout=connection_timeout_in_millis / 1000)
-        else:
-            raise ValueError(
-                'Invalid protocol: %s, either HTTP or HTTPS is expected.' % protocol)
+        conn = self._get_new_connection(protocol, host, port, connection_timeout_in_millis)
         self.local_conns.conns[key] = conn
-
         return conn
 
     def _del_connection(self, conn, protocol, host, port):
@@ -239,7 +251,7 @@ class BceHttpClient(object):
             self,
             endpoint,
             response_handler_functions,
-            path, params):
+            path, params, use_new_connection=False):
         """
         Send request to BCE services.
 
@@ -271,12 +283,16 @@ class BceHttpClient(object):
         self._check_headers(headers)
 
         conn = None
-        self.signer.sign(endpoint.protocol, endpoint.host, endpoint.port, http_method, path, 
-                headers, params, None)
 
-        conn = None
         try:
-            conn = self._get_connection(endpoint.protocol, endpoint.host, endpoint.port, 50 * 1000)
+            self.signer.sign(endpoint.protocol, endpoint.host, endpoint.port, http_method, path,
+                    headers, params, None)
+            if use_new_connection:
+                conn = self._get_new_connection(endpoint.protocol, endpoint.host,
+                        endpoint.port, 50 * 1000)
+            else:
+                conn = self._get_connection(endpoint.protocol, endpoint.host,
+                        endpoint.port, 50 * 1000)
 
             _logger.debug('request args:method=%s, uri=%s, headers=%s,patams=%s',
                     http_method, uri, headers, params)
