@@ -72,12 +72,7 @@ class BceHttpClient(object):
 
     def _get_connection(self, protocol, host, port, connection_timeout_in_millis):
         """
-        :param protocol
-        :type protocol: baidubce.protocol.Protocol
-        :param endpoint
-        :type endpoint: str
-        :param connection_timeout_in_millis
-        :type connection_timeout_in_millis int
+        get cached connection
         """
         if self._pid != os.getpid() or self._thread_id != threading.current_thread().ident:
            self._pid = os.getpid()
@@ -87,13 +82,12 @@ class BceHttpClient(object):
         key = protocol.name + host + str(port)
         if key in self.local_conns.conns:
             return self.local_conns.conns[key]
-
         conn = self._get_new_connection(protocol, host, port, connection_timeout_in_millis)
         self.local_conns.conns[key] = conn
         return conn
 
     def _del_connection(self, conn, protocol, host, port):
-        key = protocol.name + host + str(host)
+        key = protocol.name + host + str(port)
         if key in self.local_conns.conns:
             del self.local_conns.conns[key]
         conn.close()

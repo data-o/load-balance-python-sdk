@@ -164,6 +164,8 @@ class BosClient(BceBaseClient):
         #when only one object
         if response.contents and isinstance(response.contents, utils.Expando):
             response.contents = [response.contents]
+        if not response.contents:
+            response.contents = []
         return response
 
     @required(bucket_name=(bytes, str))

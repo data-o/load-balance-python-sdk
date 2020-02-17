@@ -30,6 +30,12 @@ _logger = logging.getLogger(__name__)
 class NoRetryPolicy(object):
     """A policy that never retries."""
 
+    def is_network_error(self, error, retries_attempted):
+        """Always returns False.
+        :param : ignored
+        """
+        return False
+
     def should_retry(self, error, retries_attempted):
         """Always returns False.
 
